@@ -1,0 +1,102 @@
+import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { select, Store } from '@ngrx/store';
+import { TranslateService } from '@ngx-translate/core';
+import { Observable } from 'rxjs';
+import { take } from 'rxjs/operators';
+import {
+  NotificationService,
+  ROUTE_ANIMATIONS_ELEMENTS
+} from '../../../../core/core.module';
+import * as todoActions from '../todos.actions';
+import { Todo, TodosFilter } from '../todos.model';
+import { selectRemoveDoneTodosDisabled, selectTodos } from '../todos.selectors';
+
+@Component({
+  selector: 'mfework-todos',
+  templateUrl: './todos-container.component.html',
+  styleUrls: ['./todos-container.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class TodosContainerComponent implements OnInit {
+  routeAnimationsElements = ROUTE_ANIMATIONS_ELEMENTS;
+  todos$: Observable<Todo[]>;
+  removeDoneDisabled$: Observable<boolean>;
+  newTodo = '';
+
+  constructor(
+    public store: Store,
+    public snackBar: MatSnackBar,
+    public translateService: TranslateService,
+    private notificationService: NotificationService
+  ) {}
+
+  ngOnInit() {
+    this.todos$ = this.store.pipe(select(selectTodos));
+    this.removeDoneDisabled$ = this.store.pipe(
+      select(selectRemoveDoneTodosDisabled)
+    );
+  }
+
+  get isAddTodoDisabled() {
+    return this.newTodo.length < 4;
+  }
+
+  onNewTodoChange(newTodo: string) {
+    this.newTodo = newTodo;
+  }
+
+  onNewTodoClear() {
+    this.newTodo = '';
+  }
+
+  onAddTodo() {
+    this.store.dispatch(todoActions.actionTodosAdd(this.newTodo));
+    const addedMessage = this.translateService.instant(
+      'mfework.examples.todos.added.notification',
+      { name: this.newTodo }
+    );
+    this.notificationService.info(addedMessage);
+    this.newTodo = '';
+  }
+
+  onToggleTodo(todo: Todo) {
+    this.store.dispatch(todoActions.actionTodosToggle({ id: todo.id }));
+    const newStatus = this.translateService.instant(
+      `mfework.examples.todos.filter.${todo.done ? 'active' : 'done'}`
+    );
+    const undo = this.translateService.instant('mfework.examples.todos.undo');
+    const toggledMessage = this.translateService.instant(
+      'mfework.examples.todos.toggle.notification',
+      { name: todo.name }
+    );
+
+    this.snackBar
+      .open(`${toggledMessage} ${newStatus}`, undo, {
+        duration: 2500,
+        panelClass: 'todos-notification-overlay'
+      })
+      .onAction()
+      .pipe(take(1))
+      .subscribe(() => this.onToggleTodo({ ...todo, done: !todo.done }));
+  }
+
+  onRemoveDoneTodos() {
+    this.store.dispatch(todoActions.actionTodosRemoveDone());
+    const removedMessage = this.translateService.instant(
+      'mfework.examples.todos.remove.notification'
+    );
+    this.notificationService.info(removedMessage);
+  }
+
+  onFilterTodos(filter: TodosFilter) {
+    this.store.dispatch(todoActions.actionTodosFilter({ filter }));
+    const filterToMessage = this.translateService.instant(
+      'mfework.examples.todos.filter.notification'
+    );
+    const filterMessage = this.translateService.instant(
+      `mfework.examples.todos.filter.${filter.toLowerCase()}`
+    );
+    this.notificationService.info(`${filterToMessage} ${filterMessage}`);
+  }
+}

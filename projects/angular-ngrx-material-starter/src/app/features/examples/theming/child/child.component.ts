@@ -1,0 +1,13 @@
+import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
+
+@Component({
+  selector: 'mfework-child',
+  templateUrl: './child.component.html',
+  styleUrls: ['./child.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class ChildComponent implements OnInit {
+  constructor() {}
+
+  ngOnInit() {}
+}
